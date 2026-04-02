@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IMAGINATE — AI Image Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #1e1e2e;
+    --accent: #ff6b35;
+    --accent2: #ffcc02;
+    --text: #f0efe8;
+    --muted: #6b6b7a;
+    --card: #13131c;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,107,53,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,107,53,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  header { padding: 48px 0 0; text-align: center; }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(64px, 12vw, 120px);
+    letter-spacing: 8px;
+    line-height: 0.9;
+    background: linear-gradient(135deg, var(--text) 40%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .tagline {
+    font-size: 13px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 12px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Input section */
+  .input-section {
+    margin-top: 56px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .input-section::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent));
+  }
+
+  .input-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .prompt-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .prompt-input::placeholder { color: var(--muted); }
+  .prompt-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255,107,53,0.12);
+  }
+
+  .generate-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    padding: 16px 28px;
+    color: #fff;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: transform 0.15s, background 0.15s, box-shadow 0.15s;
+    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .generate-btn:hover:not(:disabled) {
+    background: #ff5520;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(255,107,53,0.35);
+  }
+
+  .generate-btn:active:not(:disabled) { transform: translateY(0); }
+  .generate-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* Style pills */
+  .style-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .style-pill {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .style-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .style-pill.active {
+    background: rgba(255,107,53,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Extra options row */
+  .options-row {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+  }
+
+  .options-group { display: flex; flex-direction: column; gap: 8px; }
+
+  .options-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+
+  .mini-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .mini-pill {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 4px 11px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .mini-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .mini-pill.active {
+    background: rgba(255,107,53,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Random prompt btn */
+  .random-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    color: var(--muted);
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-left: auto;
+  }
+  .random-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Output section */
+  .output-section { margin-top: 32px; min-height: 500px; }
+
+  .placeholder-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 460px;
+    border: 1px dashed var(--border);
+    border-radius: 16px;
+    gap: 16px;
+    color: var(--muted);
+    transition: all 0.3s;
+  }
+
+  .placeholder-icon { font-size: 48px; opacity: 0.3; }
+  .placeholder-text { font-size: 14px; letter-spacing: 1px; font-family: 'Space Mono', monospace; }
+
+  /* Loading state */
+  .loading-state {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 460px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    gap: 20px;
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .loading-state::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,107,53,0.04), transparent);
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+  .spinner {
+    width: 48px; height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-label {
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .loading-prompt {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    max-width: 300px;
+  }
+
+  /* Progress bar */
+  .progress-wrap {
+    width: 260px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .progress-track {
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 100px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0%;
+    transition: width 0.5s ease;
+  }
+
+  .progress-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .progress-pct {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .progress-eta {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .progress-phase {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  /* Image result */
+  .image-result {
+    display: none;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    position: relative;
+  }
+
+  .image-result img {
+    width: 100%;
+    display: block;
+    max-height: 600px;
+    object-fit: contain;
+    background: var(--card);
+  }
+
+  .image-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .image-prompt-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--bg);
+    padding: 4px 10px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .action-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    transition: all 0.15s;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Size selector in toolbar */
+  .size-select {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: var(--muted);
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.15s;
+  }
+  .size-select:hover { border-color: var(--accent); }
+
+  /* Gallery */
+  .gallery-section { margin-top: 48px; padding-bottom: 64px; }
+
+  .section-label {
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    margin-bottom: 20px;
+  }
+
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+
+  .gallery-item {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    aspect-ratio: 1;
+    background: var(--card);
+    position: relative;
+  }
+
+  .gallery-item:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent);
+    box-shadow: 0 12px 32px rgba(255,107,53,0.15);
+  }
+
+  .gallery-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .gallery-item .gallery-label {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(10,10,15,0.9));
+    padding: 20px 10px 8px;
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .gallery-item:hover .gallery-label { opacity: 1; }
+
+  /* Error state */
+  .error-state {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    border: 1px solid rgba(255,80,80,0.2);
+    border-radius: 16px;
+    gap: 12px;
+    background: rgba(255,80,80,0.04);
+  }
+
+  .error-icon { font-size: 36px; }
+  .error-msg { color: #ff6060; font-family: 'Space Mono', monospace; font-size: 13px; text-align: center; max-width: 400px; }
+
+  @media (max-width: 600px) {
+    .input-row { flex-direction: column; }
+    .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ── Mode tabs ── */
+  .mode-tabs {
+    display: flex; gap: 6px; margin-top: 36px; margin-bottom: 0;
+  }
+  .mode-tab {
+    background: var(--surface); border: 1px solid var(--border);
+    border-bottom: none; border-radius: 12px 12px 0 0;
+    padding: 10px 22px; font-family: 'Space Mono', monospace;
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted); cursor: pointer; transition: all 0.15s;
+  }
+  .mode-tab:hover { color: var(--text); }
+  .mode-tab.active { background: var(--surface); color: var(--accent); border-color: var(--border); border-bottom-color: var(--surface); margin-bottom: -1px; z-index: 2; }
+
+  /* ── Inpainting section ── */
+  .inpaint-section {
+    display: none; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 0 16px 16px 16px;
+    padding: 28px; position: relative; overflow: hidden;
+  }
+  .inpaint-section::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent));
+  }
+  .inpaint-section.active { display: block; }
+  .input-section.tabbed { border-radius: 0 16px 16px 16px; margin-top: 0; }
+
+  .upload-zone {
+    border: 2px dashed var(--border); border-radius: 12px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; padding: 32px; cursor: pointer; transition: all 0.2s;
+    color: var(--muted); min-height: 120px; text-align: center;
+  }
+  .upload-zone:hover { border-color: var(--accent); color: var(--accent); }
+  .upload-zone input { display: none; }
+  .upload-icon { font-size: 28px; opacity: 0.5; }
+  .upload-text { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }
+
+  .canvas-wrap {
+    display: none; position: relative; border-radius: 12px;
+    overflow: hidden; border: 1px solid var(--border); cursor: crosshair;
+  }
+  #inpaintCanvas { display: block; width: 100%; }
+  #maskCanvas { position: absolute; top: 0; left: 0; width: 100%; pointer-events: none; }
+
+  .brush-controls {
+    display: flex; align-items: center; gap: 14px; margin-top: 12px; flex-wrap: wrap;
+  }
+  .brush-label { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+  .brush-slider { flex: 1; min-width: 80px; max-width: 140px; accent-color: var(--accent); }
+  .brush-preview {
+    width: 28px; height: 28px; border-radius: 50%; background: rgba(255,107,53,0.5);
+    border: 2px solid var(--accent); flex-shrink: 0;
+  }
+  .inpaint-row { display: flex; gap: 10px; margin-top: 14px; align-items: stretch; }
+  .inpaint-hint {
+    font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted);
+    margin-top: 8px; letter-spacing: 1px;
+  }
+  .clear-btn {
+    background: transparent; border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 12px; color: var(--muted); font-size: 11px;
+    font-family: 'Space Mono', monospace; cursor: pointer; transition: all 0.15s;
+  }
+  .clear-btn:hover { border-color: #ff6060; color: #ff6060; }
+
+  /* inpaint result */
+  .inpaint-result {
+    display: none; border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--border); margin-top: 16px;
+  }
+  .inpaint-result img { width: 100%; display: block; background: var(--card); }
+
+  /* inpaint loading */
+  .inpaint-loading {
+    display: none; align-items: center; justify-content: center;
+    gap: 14px; padding: 24px; border: 1px solid var(--border);
+    border-radius: 12px; margin-top: 16px; background: var(--card);
+  }
+  .inpaint-loading .spinner { width: 28px; height: 28px; border-width: 2px; }
+  .inpaint-loading span { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 2px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">IMAGINATE</div>
+    <p class="tagline">Type anything. Watch it appear.</p>
+  </header>
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="tabGenerate" onclick="switchTab('generate')">✦ Generate</button>
+    <button class="mode-tab" id="tabInpaint" onclick="switchTab('inpaint')">⬡ Inpainting</button>
+  </div>
+
+  <div class="input-section tabbed" id="sectionGenerate" style="margin-top: 0;">
+    <div style="display:flex;align-items:center;margin-bottom:16px;">
+      <span class="input-label" style="margin:0;">Your prompt</span>
+      <button class="random-btn" onclick="randomPrompt()">⚄ Random</button>
+    </div>
+    <div class="input-row">
+      <input
+        type="text"
+        class="prompt-input"
+        id="promptInput"
+        placeholder="a glowing orange on a marble table, cinematic lighting…"
+        maxlength="300"
+      />
+      <button class="generate-btn" id="generateBtn" onclick="generateImage()">
+        GENERATE
+      </button>
+    </div>
+
+    <div class="style-row" id="stylePills">
+      <button class="style-pill active" onclick="setStyle(this, '')">None</button>
+      <button class="style-pill" onclick="setStyle(this, ', photorealistic, 8k')">Photo</button>
+      <button class="style-pill" onclick="setStyle(this, ', watercolor painting')">Watercolor</button>
+      <button class="style-pill" onclick="setStyle(this, ', digital art, vibrant')">Digital Art</button>
+      <button class="style-pill" onclick="setStyle(this, ', oil painting, renaissance')">Oil Paint</button>
+      <button class="style-pill" onclick="setStyle(this, ', minimalist, flat design')">Minimal</button>
+      <button class="style-pill" onclick="setStyle(this, ', pixel art, retro')">Pixel Art</button>
+      <button class="style-pill" onclick="setStyle(this, ', anime style, cel shading')">Anime</button>
+      <button class="style-pill" onclick="setStyle(this, ', surrealist, dreamlike')">Surreal</button>
+    </div>
+
+    <div class="options-row">
+      <div class="options-group">
+        <span class="options-label">Mood</span>
+        <div class="mini-pills" id="moodPills">
+          <button class="mini-pill active" onclick="setMood(this, '')">Any</button>
+          <button class="mini-pill" onclick="setMood(this, ', warm golden tones')">Warm</button>
+          <button class="mini-pill" onclick="setMood(this, ', cool blue tones, calm')">Cool</button>
+          <button class="mini-pill" onclick="setMood(this, ', dark moody, dramatic')">Dark</button>
+          <button class="mini-pill" onclick="setMood(this, ', vibrant saturated colors')">Vivid</button>
+        </div>
+      </div>
+      <div class="options-group">
+        <span class="options-label">Size</span>
+        <div class="mini-pills" id="sizePills">
+          <button class="mini-pill active" onclick="setSize(this, 512, 512)">512</button>
+          <button class="mini-pill" onclick="setSize(this, 768, 768)">768</button>
+          <button class="mini-pill" onclick="setSize(this, 1024, 1024)">1024</button>
+          <button class="mini-pill" onclick="setSize(this, 1024, 576)">Wide</button>
+          <button class="mini-pill" onclick="setSize(this, 576, 1024)">Tall</button>
+        </div>
+      </div>
+    </div>
+  </div><!-- /sectionGenerate -->
+
+  <!-- ── Inpainting section ── -->
+  <div class="inpaint-section" id="sectionInpaint">
+    <div style="display:flex;align-items:center;margin-bottom:16px;">
+      <span class="input-label" style="margin:0;">1. Upload an image</span>
+    </div>
+
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('imgUpload').click()">
+      <div class="upload-icon">⬆</div>
+      <div class="upload-text">Click to upload an image</div>
+      <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">JPG, PNG supported</div>
+      <input type="file" id="imgUpload" accept="image/*" onchange="loadInpaintImage(event)" />
+    </div>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="inpaintCanvas"></canvas>
+      <canvas id="maskCanvas"></canvas>
+    </div>
+
+    <div class="brush-controls" id="brushControls" style="display:none;">
+      <span class="brush-label">Brush size</span>
+      <input type="range" class="brush-slider" id="brushSize" min="5" max="80" value="24" oninput="updateBrushPreview()" />
+      <div class="brush-preview" id="brushPreview"></div>
+      <button class="clear-btn" onclick="clearMask()">✕ Clear mask</button>
+      <button class="clear-btn" onclick="resetInpaint()">↺ New image</button>
+    </div>
+    <div class="inpaint-hint" id="brushHint" style="display:none;">Paint over the area you want to change, then describe what should replace it.</div>
+
+    <div class="inpaint-row" id="inpaintPromptRow" style="display:none;">
+      <input type="text" class="prompt-input" id="inpaintPrompt"
+        placeholder="e.g. a red sports car, a mountain, remove this object…"
+        maxlength="300" style="font-size:14px;padding:13px 16px;" />
+      <button class="generate-btn" id="inpaintBtn" onclick="runInpaint()">APPLY</button>
+    </div>
+
+    <div class="inpaint-loading" id="inpaintLoading">
+      <div class="spinner"></div>
+      <span>Inpainting…</span>
+    </div>
+
+    <div class="inpaint-result" id="inpaintResult">
+      <img id="inpaintResultImg" alt="Inpainted result" />
+      <div class="image-toolbar">
+        <span class="image-prompt-tag" id="inpaintPromptTag"></span>
+        <div class="toolbar-actions">
+          <button class="action-btn" onclick="downloadInpaintResult()">↓ Save JPG</button>
+          <button class="action-btn" onclick="useInpaintAsBase()">→ Edit again</button>
+        </div>
+      </div>
+    </div>
+  </div><!-- /sectionInpaint -->
+    <div class="placeholder-state" id="placeholderState">
+      <div class="placeholder-icon">✦</div>
+      <div class="placeholder-text">your image will appear here</div>
+    </div>
+
+    <div class="loading-state" id="loadingState">
+      <div class="spinner"></div>
+      <div class="loading-label">Generating</div>
+      <div class="loading-prompt" id="loadingPrompt"></div>
+      <div class="progress-wrap">
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-row">
+          <span class="progress-pct" id="progressPct">0%</span>
+          <span class="progress-eta" id="progressEta"></span>
+        </div>
+        <div class="progress-phase" id="progressPhase">Starting up…</div>
+      </div>
+    </div>
+
+    <div class="image-result" id="imageResult">
+      <img id="generatedImage" src="" alt="Generated image" />
+      <div class="image-toolbar">
+        <span class="image-prompt-tag" id="imagePromptTag"></span>
+        <div class="toolbar-actions">
+          <button class="action-btn" id="downloadBtn" onclick="downloadAsJpg()">↓ Save JPG</button>
+          <button class="action-btn" onclick="copyPromptToClipboard()">⎘ Copy prompt</button>
+          <button class="action-btn" onclick="regenerate()">↺ Again</button>
+          <button class="action-btn" onclick="shareImage()">↗ Share</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="error-state" id="errorState">
+      <div class="error-icon">⚠</div>
+      <div class="error-msg" id="errorMsg">Something went wrong. Please try again.</div>
+      <button class="action-btn" onclick="resetToPlaceholder()">Try Again</button>
+    </div>
+  </div>
+
+  <div class="gallery-section" id="gallerySection" style="display:none;">
+    <div class="section-label">Recent generations</div>
+    <div class="gallery-grid" id="galleryGrid"></div>
+  </div>
+</div>
+
+<script>
+  let selectedStyle = '';
+  let selectedMood = '';
+  let selectedWidth = 512;
+  let selectedHeight = 512;
+  let lastPrompt = '';
+  let lastImageUrl = '';
+  const gallery = [];
+  let progressTimer = null;
+  let startTime = 0;
+
+  const RANDOM_PROMPTS = [
+    'a glowing orange on a marble table, cinematic lighting',
+    'a cat astronaut floating in deep space',
+    'an ancient lighthouse struck by lightning in a storm',
+    'a neon-lit rainy Tokyo alley at midnight',
+    'a dragon made of autumn leaves mid-flight',
+    'a cozy cabin in a snowy forest at dusk',
+    'a futuristic city floating above the clouds',
+    'an underwater palace with bioluminescent fish',
+    'a wolf howling at a giant full moon',
+    'a phoenix rising from a volcano at sunrise',
+    'a tiny village on a floating island',
+    'a surreal clock melting over an endless desert',
+    'a field of giant glowing mushrooms at night',
+    'a samurai standing in a bamboo forest in the rain',
+    'a steampunk airship sailing over mountains',
+  ];
+
+  const PHASES = [
+    [0,   8,  'Sending request…'],
+    [8,   22, 'Processing prompt…'],
+    [22,  45, 'Generating image…'],
+    [45,  70, 'Rendering details…'],
+    [70,  88, 'Adding finishing touches…'],
+    [88,  97, 'Almost there…'],
+    [97,  99, 'Loading image…'],
+  ];
+
+  function setStyle(el, style) {
+    document.querySelectorAll('.style-pill').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    selectedStyle = style;
+  }
+
+  function setMood(el, mood) {
+    document.querySelectorAll('#moodPills .mini-pill').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    selectedMood = mood;
+  }
+
+  function setSize(el, w, h) {
+    document.querySelectorAll('#sizePills .mini-pill').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    selectedWidth = w;
+    selectedHeight = h;
+  }
+
+  function randomPrompt() {
+    const p = RANDOM_PROMPTS[Math.floor(Math.random() * RANDOM_PROMPTS.length)];
+    document.getElementById('promptInput').value = p;
+    document.getElementById('promptInput').focus();
+  }
+
+  function show(id) {
+    ['placeholderState','loadingState','imageResult','errorState'].forEach(s => {
+      document.getElementById(s).style.display = 'none';
+    });
+    document.getElementById(id).style.display = 'flex';
+    if (id === 'imageResult') document.getElementById(id).style.display = 'block';
+  }
+
+  // ── Progress bar ──
+  function startProgress() {
+    startTime = Date.now();
+    let pct = 0;
+    clearInterval(progressTimer);
+    updateProgress(0);
+
+    progressTimer = setInterval(() => {
+      const elapsed = (Date.now() - startTime) / 1000;
+      const expected = 10; // turbo ~8-12s, flux-schnell fallback ~18s
+      const raw = Math.min(97, (elapsed / expected) * 100);
+      pct = Math.min(97, pct + (raw - pct) * 0.1);
+
+      const remaining = Math.max(0, expected - elapsed);
+      const eta = remaining > 1 ? `~${Math.ceil(remaining)}s left` : 'finishing…';
+      const phase = PHASES.find(([a, b]) => pct >= a && pct < b);
+      updateProgress(pct, phase ? phase[2] : 'Finishing…', eta);
+    }, 250);
+  }
+
+  function updateProgress(pct, phase, eta) {
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressPct').textContent = Math.round(pct) + '%';
+    if (phase) document.getElementById('progressPhase').textContent = phase;
+    if (eta !== undefined) document.getElementById('progressEta').textContent = eta;
+  }
+
+  function stopProgress() {
+    clearInterval(progressTimer);
+    updateProgress(100, 'Done!', '');
+  }
+
+  // ── Download as real JPG via canvas (bypasses cross-origin block) ──
+  async function downloadAsJpg() {
+    if (!lastImageUrl) return;
+    const btn = document.getElementById('downloadBtn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '⏳ Saving…';
+    btn.disabled = true;
+    try {
+      const res = await fetch(lastImageUrl);
+      const blob = await res.blob();
+      const bmp = await createImageBitmap(blob);
+      const canvas = document.createElement('canvas');
+      canvas.width = bmp.width;
+      canvas.height = bmp.height;
+      canvas.getContext('2d').drawImage(bmp, 0, 0);
+      canvas.toBlob(jpgBlob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(jpgBlob);
+        a.download = (lastPrompt.slice(0, 40).replace(/[^a-z0-9]+/gi, '-') || 'imaginate') + '.jpg';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        btn.innerHTML = '✓ Saved!';
+        setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 1500);
+      }, 'image/jpeg', 0.95);
+    } catch {
+      // fallback: open in new tab so user can right-click save
+      window.open(lastImageUrl, '_blank');
+      btn.innerHTML = orig;
+      btn.disabled = false;
+    }
+  }
+
+  // ── Try a model, return resolved img src or throw ──
+  function tryLoad(url, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const t = setTimeout(() => { img.src = ''; reject(new Error('timeout')); }, timeoutMs);
+      img.crossOrigin = 'anonymous';
+      img.onload = () => { clearTimeout(t); resolve(url); };
+      img.onerror = () => { clearTimeout(t); reject(new Error('error')); };
+      img.src = url;
+    });
+  }
+
+  // ── Main generate — tries turbo first (faster), falls back to flux-schnell ──
+  async function generateImage() {
+    const input = document.getElementById('promptInput');
+    const prompt = input.value.trim();
+    if (!prompt) {
+      input.focus();
+      input.style.borderColor = '#ff6060';
+      setTimeout(() => input.style.borderColor = '', 800);
+      return;
+    }
+
+    lastPrompt = prompt;
+    const fullPrompt = prompt + selectedStyle + selectedMood;
+
+    document.getElementById('generateBtn').disabled = true;
+    document.getElementById('loadingPrompt').textContent = '"' + prompt + '"';
+    show('loadingState');
+    startProgress();
+
+    const seed = Math.floor(Math.random() * 999999);
+    const base = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}`;
+    const params = `width=${selectedWidth}&height=${selectedHeight}&seed=${seed}&nologo=true&nofeed=true`;
+
+    // turbo is ~2x faster than flux-schnell when available
+    const turboUrl  = `${base}?${params}&model=turbo`;
+    const schnellUrl = `${base}?${params}&model=flux-schnell`;
+
+    try {
+      let imageUrl;
+      try {
+        // race: turbo with 22s limit
+        imageUrl = await tryLoad(turboUrl, 22000);
+      } catch {
+        // fallback to flux-schnell
+        document.getElementById('progressPhase').textContent = 'Switching to fallback model…';
+        imageUrl = await tryLoad(schnellUrl, 45000);
+      }
+
+      stopProgress();
+      lastImageUrl = imageUrl;
+      const img = document.getElementById('generatedImage');
+      img.crossOrigin = 'anonymous';
+      img.src = imageUrl;
+      document.getElementById('imagePromptTag').textContent = prompt;
+      show('imageResult');
+      addToGallery(imageUrl, prompt);
+
+    } catch (err) {
+      clearInterval(progressTimer);
+      document.getElementById('errorMsg').textContent = 'Could not generate image. Check your connection or try a different prompt.';
+      show('errorState');
+    } finally {
+      document.getElementById('generateBtn').disabled = false;
+    }
+  }
+
+  function regenerate() {
+    document.getElementById('promptInput').value = lastPrompt;
+    generateImage();
+  }
+
+  function resetToPlaceholder() { show('placeholderState'); }
+
+  function copyPromptToClipboard() {
+    navigator.clipboard.writeText(lastPrompt).then(() => {
+      const btn = event.currentTarget;
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✓ Copied!';
+      setTimeout(() => btn.innerHTML = orig, 1500);
+    });
+  }
+
+  function shareImage() {
+    if (navigator.share && lastImageUrl) {
+      navigator.share({ title: 'IMAGINATE', text: lastPrompt, url: lastImageUrl });
+    } else {
+      navigator.clipboard.writeText(lastImageUrl).then(() => {
+        const btn = event.currentTarget;
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✓ Link copied!';
+        setTimeout(() => btn.innerHTML = orig, 1500);
+      });
+    }
+  }
+
+  function addToGallery(url, prompt) {
+    gallery.unshift({ url, prompt });
+    if (gallery.length > 12) gallery.pop();
+
+    const section = document.getElementById('gallerySection');
+    const grid = document.getElementById('galleryGrid');
+    section.style.display = 'block';
+    grid.innerHTML = '';
+
+    gallery.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'gallery-item';
+      div.innerHTML = `
+        <img src="${item.url}" alt="${item.prompt}" loading="lazy" />
+        <div class="gallery-label">${item.prompt}</div>
+      `;
+      div.onclick = () => {
+        lastImageUrl = item.url;
+        lastPrompt = item.prompt;
+        document.getElementById('generatedImage').src = item.url;
+        document.getElementById('imagePromptTag').textContent = item.prompt;
+        document.getElementById('downloadBtn').href = item.url;
+        show('imageResult');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+      grid.appendChild(div);
+    });
+  }
+
+  document.getElementById('promptInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') generateImage();
+  });
+  document.getElementById('inpaintPrompt').addEventListener('keydown', e => {
+    if (e.key === 'Enter') runInpaint();
+  });
+
+  // ── Tab switching ──
+  function switchTab(tab) {
+    const isGenerate = tab === 'generate';
+    document.getElementById('tabGenerate').classList.toggle('active', isGenerate);
+    document.getElementById('tabInpaint').classList.toggle('active', !isGenerate);
+    document.getElementById('sectionGenerate').style.display = isGenerate ? 'block' : 'none';
+    document.getElementById('sectionInpaint').classList.toggle('active', !isGenerate);
+    document.querySelector('.output-section').style.display = isGenerate ? 'block' : 'none';
+    document.getElementById('gallerySection').style.display = isGenerate && gallery.length ? 'block' : 'none';
+  }
+
+  // ── Inpainting ──
+  let inpaintCtx, maskCtx, painting = false;
+  let inpaintOriginalBlob = null;
+  let lastInpaintUrl = '';
+
+  function loadInpaintImage(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    inpaintOriginalBlob = file;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 768;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+
+        const ic = document.getElementById('inpaintCanvas');
+        const mc = document.getElementById('maskCanvas');
+        ic.width = w; ic.height = h;
+        mc.width = w; mc.height = h;
+
+        inpaintCtx = ic.getContext('2d');
+        maskCtx = mc.getContext('2d');
+        inpaintCtx.drawImage(img, 0, 0, w, h);
+
+        document.getElementById('uploadZone').style.display = 'none';
+        document.getElementById('canvasWrap').style.display = 'block';
+        document.getElementById('brushControls').style.display = 'flex';
+        document.getElementById('brushHint').style.display = 'block';
+        document.getElementById('inpaintPromptRow').style.display = 'flex';
+        document.getElementById('inpaintResult').style.display = 'none';
+        document.getElementById('inpaintLoading').style.display = 'none';
+
+        setupBrush();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function setupBrush() {
+    const mc = document.getElementById('maskCanvas');
+    const getPos = e => {
+      const r = mc.getBoundingClientRect();
+      const scaleX = mc.width / r.width;
+      const scaleY = mc.height / r.height;
+      const src = e.touches ? e.touches[0] : e;
+      return { x: (src.clientX - r.left) * scaleX, y: (src.clientY - r.top) * scaleY };
+    };
+    const paint = e => {
+      if (!painting) return;
+      e.preventDefault();
+      const { x, y } = getPos(e);
+      const r = parseInt(document.getElementById('brushSize').value);
+      maskCtx.globalCompositeOperation = 'source-over';
+      maskCtx.fillStyle = 'rgba(255,107,53,0.55)';
+      maskCtx.beginPath();
+      maskCtx.arc(x, y, r, 0, Math.PI * 2);
+      maskCtx.fill();
+    };
+    mc.onmousedown  = e => { painting = true; paint(e); };
+    mc.onmousemove  = paint;
+    mc.onmouseup    = () => painting = false;
+    mc.onmouseleave = () => painting = false;
+    mc.ontouchstart = e => { painting = true; paint(e); };
+    mc.ontouchmove  = paint;
+    mc.ontouchend   = () => painting = false;
+  }
+
+  function updateBrushPreview() {
+    const s = document.getElementById('brushSize').value;
+    const p = document.getElementById('brushPreview');
+    p.style.width = p.style.height = Math.max(12, Math.min(40, s * 0.7)) + 'px';
+  }
+
+  function clearMask() {
+    if (!maskCtx) return;
+    const mc = document.getElementById('maskCanvas');
+    maskCtx.clearRect(0, 0, mc.width, mc.height);
+  }
+
+  function resetInpaint() {
+    document.getElementById('uploadZone').style.display = 'flex';
+    document.getElementById('canvasWrap').style.display = 'none';
+    document.getElementById('brushControls').style.display = 'none';
+    document.getElementById('brushHint').style.display = 'none';
+    document.getElementById('inpaintPromptRow').style.display = 'none';
+    document.getElementById('inpaintResult').style.display = 'none';
+    document.getElementById('inpaintLoading').style.display = 'none';
+    document.getElementById('imgUpload').value = '';
+    inpaintOriginalBlob = null;
+  }
+
+  // Build a black-and-white mask PNG from the painted canvas
+  function getMaskBlob() {
+    const mc = document.getElementById('maskCanvas');
+    const tmp = document.createElement('canvas');
+    tmp.width = mc.width; tmp.height = mc.height;
+    const ctx = tmp.getContext('2d');
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, tmp.width, tmp.height);
+    // wherever user painted: white
+    const data = maskCtx.getImageData(0, 0, mc.width, mc.height).data;
+    const outData = ctx.getImageData(0, 0, tmp.width, tmp.height);
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] > 10) {
+        outData.data[i] = 255;
+        outData.data[i+1] = 255;
+        outData.data[i+2] = 255;
+        outData.data[i+3] = 255;
+      }
+    }
+    ctx.putImageData(outData, 0, 0);
+    return new Promise(res => tmp.toBlob(res, 'image/png'));
+  }
+
+  // Get the source image as a blob from the canvas
+  function getSourceBlob() {
+    const ic = document.getElementById('inpaintCanvas');
+    return new Promise(res => ic.toBlob(res, 'image/png'));
+  }
+
+  async function runInpaint() {
+    const prompt = document.getElementById('inpaintPrompt').value.trim();
+    if (!prompt) { document.getElementById('inpaintPrompt').focus(); return; }
+
+    const mc = document.getElementById('maskCanvas');
+    const pixels = maskCtx.getImageData(0, 0, mc.width, mc.height).data;
+    const hasMask = pixels.some((v, i) => i % 4 === 3 && v > 10);
+    if (!hasMask) {
+      alert('Please paint over the area you want to change first.');
+      return;
+    }
+
+    document.getElementById('inpaintBtn').disabled = true;
+    document.getElementById('inpaintLoading').style.display = 'flex';
+    document.getElementById('inpaintResult').style.display = 'none';
+
+    try {
+      const [imgBlob, maskBlob] = await Promise.all([getSourceBlob(), getMaskBlob()]);
+      const form = new FormData();
+      form.append('image', imgBlob, 'image.png');
+      form.append('mask', maskBlob, 'mask.png');
+      form.append('prompt', prompt);
+
+      // Pollinations inpainting endpoint
+      const res = await fetch('https://image.pollinations.ai/inpainting', {
+        method: 'POST',
+        body: form
+      });
+
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      lastInpaintUrl = url;
+
+      document.getElementById('inpaintResultImg').src = url;
+      document.getElementById('inpaintPromptTag').textContent = prompt;
+      document.getElementById('inpaintResult').style.display = 'block';
+
+      // Also update the edit canvas with the result so they can edit again
+      const resultImg = new Image();
+      resultImg.onload = () => {
+        inpaintCtx.clearRect(0, 0, document.getElementById('inpaintCanvas').width, document.getElementById('inpaintCanvas').height);
+        inpaintCtx.drawImage(resultImg, 0, 0, document.getElementById('inpaintCanvas').width, document.getElementById('inpaintCanvas').height);
+        clearMask();
+      };
+      resultImg.src = url;
+
+    } catch (err) {
+      // Fallback: Pollinations doesn't have a public inpainting REST endpoint yet,
+      // so compose a URL-based approximation using img2img style prompt
+      try {
+        const ic = document.getElementById('inpaintCanvas');
+        const seed = Math.floor(Math.random() * 999999);
+        const fallbackUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${ic.width}&height=${ic.height}&seed=${seed}&model=turbo&nologo=true&nofeed=true`;
+        const img = document.getElementById('inpaintResultImg');
+        await new Promise((res, rej) => {
+          const t = setTimeout(() => rej(), 30000);
+          img.onload = () => { clearTimeout(t); res(); };
+          img.onerror = () => { clearTimeout(t); rej(); };
+          img.src = fallbackUrl;
+        });
+        lastInpaintUrl = fallbackUrl;
+        document.getElementById('inpaintPromptTag').textContent = prompt + ' (generated fresh — inpainting API unavailable)';
+        document.getElementById('inpaintResult').style.display = 'block';
+      } catch {
+        alert('Inpainting failed. The Pollinations inpainting API may be unavailable. Try again shortly.');
+      }
+    } finally {
+      document.getElementById('inpaintLoading').style.display = 'none';
+      document.getElementById('inpaintBtn').disabled = false;
+    }
+  }
+
+  async function downloadInpaintResult() {
+    if (!lastInpaintUrl) return;
+    try {
+      const res = await fetch(lastInpaintUrl);
+      const blob = await res.blob();
+      const bmp = await createImageBitmap(blob);
+      const canvas = document.createElement('canvas');
+      canvas.width = bmp.width; canvas.height = bmp.height;
+      canvas.getContext('2d').drawImage(bmp, 0, 0);
+      canvas.toBlob(jpgBlob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(jpgBlob);
+        a.download = 'imaginate-inpaint.jpg';
+        a.click();
+      }, 'image/jpeg', 0.95);
+    } catch {
+      window.open(lastInpaintUrl, '_blank');
+    }
+  }
+
+  function useInpaintAsBase() {
+    // Reset to let them re-paint on the result (canvas already updated)
+    clearMask();
+    document.getElementById('inpaintResult').style.display = 'none';
+    document.getElementById('inpaintPrompt').value = '';
+    document.getElementById('inpaintPrompt').focus();
+  }
+</script>
+</body>
+</html>
